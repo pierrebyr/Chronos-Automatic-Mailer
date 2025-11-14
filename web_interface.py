@@ -327,44 +327,73 @@ def show_send_emails(system):
     # Send button
     st.markdown("---")
     
+    # Initialize confirmation state
+    if 'confirm_send' not in st.session_state:
+        st.session_state['confirm_send'] = False
+
     col1, col2, col3 = st.columns(3)
-    
+
     with col2:
-        if st.button("🚀 SEND EMAILS", type="primary", use_container_width=True):
-            st.warning("Are you sure? This will send emails to all selected prospects.")
-            
-            if st.button("✓ Yes, Send Now"):
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                
-                for i, prospect_id in enumerate(selected_prospects):
-                    prospect = system.db.get_prospect(prospect_id)
-                    email = system.db.get_email_sequence(prospect_id, email_number)
-                    
-                    status_text.text(f"Sending to {prospect['company']}... ({i+1}/{len(selected_prospects)})")
-                    
-                    success = system.email_sender.send_email(
-                        to_email=prospect['email'],
-                        subject=email['subject'],
-                        body=email['body'],
-                        html_body=email.get('html_body')
-                    )
-                    
-                    if success:
-                        system.db.mark_email_sent(prospect_id, email_number)
-                    
-                    progress_bar.progress((i + 1) / len(selected_prospects))
-                    
-                    if i < len(selected_prospects) - 1:
-                        import time
-                        time.sleep(delay)
-                
-                status_text.empty()
-                progress_bar.empty()
-                st.success(f"✓ Sent emails to {len(selected_prospects)} prospects!")
-                st.balloons()
+        if not st.session_state['confirm_send']:
+            if st.button("🚀 SEND EMAILS", type="primary", use_container_width=True):
+                st.session_state['confirm_send'] = True
+                st.rerun()
+        else:
+            st.warning(f"⚠️ Are you sure? This will send Email #{email_number} to {len(selected_prospects)} prospects.")
+
+            col_yes, col_no = st.columns(2)
+            with col_yes:
+                if st.button("✓ Yes, Send Now", type="primary", use_container_width=True):
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+
+                    for i, prospect_id in enumerate(selected_prospects):
+                        prospect = system.db.get_prospect(prospect_id)
+                        email = system.db.get_email_sequence(prospect_id, email_number)
+
+                        status_text.text(f"Sending to {prospect['company']}... ({i+1}/{len(selected_prospects)})")
+
+                        success = system.email_sender.send_email(
+                            to_email=prospect['email'],
+                            subject=email['subject'],
+                            body=email['body'],
+                            html_body=email.get('html_body')
+                        )
+
+                        if success:
+                            system.db.mark_email_sent(prospect_id, email_number)
+
+                        progress_bar.progress((i + 1) / len(selected_prospects))
+
+                        if i < len(selected_prospects) - 1:
+                            import time
+                            time.sleep(delay)
+
+                    status_text.empty()
+                    progress_bar.empty()
+                    st.success(f"✓ Sent emails to {len(selected_prospects)} prospects!")
+                    st.balloons()
+                    st.session_state['confirm_send'] = False
+
+            with col_no:
+                if st.button("✗ Cancel", use_container_width=True):
+                    st.session_state['confirm_send'] = False
+                    st.rerun()
 
 
 if __name__ == '__main__':
     # Run with: streamlit run web_interface.py
-    st.write("This module should be run from main.py")
+    import json
+    from main import ChronosSystem
+
+    # Load config
+    try:
+        with open('config.json', 'r') as f:
+            config = json.load(f)
+        system = ChronosSystem(config)
+        launch_app(system)
+    except FileNotFoundError:
+        st.error("❌ config.json not found. Please run setup first: python setup.py")
+    except Exception as e:
+        st.error(f"❌ Error initializing system: {e}")
+        st.info("Please ensure you have run setup and configured the system properly.")

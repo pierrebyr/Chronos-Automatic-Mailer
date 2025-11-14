@@ -4,6 +4,7 @@ Research Engine - Automated brand discovery and data enrichment
 """
 
 import re
+import logging
 import requests
 import anthropic
 from bs4 import BeautifulSoup
@@ -15,10 +16,43 @@ class BrandResearcher:
     """Finds and enriches brand data automatically"""
     
     def __init__(self, config):
+        self.logger = logging.getLogger('chronos.researcher')
         self.config = config
         self.claude = anthropic.Anthropic(api_key=config['anthropic_api_key'])
         self.brave_api_key = config.get('brave_api_key')
-        
+        self.logger.info("Brand Researcher initialized")
+
+    def _validate_email(self, email):
+        """
+        Validate email address format and check if it's likely to be real
+
+        Args:
+            email: Email address to validate
+
+        Returns:
+            Boolean indicating if email appears valid
+        """
+        if not email:
+            return False
+
+        # Basic format check
+        email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+        if not email_pattern.match(email):
+            return False
+
+        # Filter out common fake/invalid patterns
+        invalid_patterns = [
+            'noreply', 'no-reply', 'donotreply', 'do-not-reply',
+            'example.com', 'test.com', 'dummy', 'fake',
+            'placeholder', 'yourdomain', 'domain.com'
+        ]
+
+        email_lower = email.lower()
+        if any(pattern in email_lower for pattern in invalid_patterns):
+            return False
+
+        return True
+
     def find_brands(self, category, limit=20):
         """
         Find brands in a specific category using web search
@@ -176,7 +210,7 @@ Return only valid JSON, nothing else."""
         
         try:
             message = self.claude.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=1000,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -260,15 +294,14 @@ Return only valid JSON, nothing else."""
     def _find_email(self, website, website_data, brand_name):
         """Find contact email for the brand"""
         # Method 1: Look for emails in page text
-        emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', 
+        emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
                            website_data['text'])
-        
+
         if emails:
-            # Filter out common non-contact emails
-            filtered = [e for e in emails if not any(x in e.lower() for x in 
-                       ['noreply', 'no-reply', 'donotreply', 'example.com'])]
-            if filtered:
-                return filtered[0]
+            # Filter using validation function
+            valid_emails = [e for e in emails if self._validate_email(e)]
+            if valid_emails:
+                return valid_emails[0]
         
         # Method 2: Check contact page
         contact_links = [link for link in website_data['links'] 
@@ -278,24 +311,33 @@ Return only valid JSON, nothing else."""
         for link in contact_links[:3]:  # Check first 3 contact-related pages
             try:
                 contact_data = self._scrape_website(link['url'])
-                emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', 
+                emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
                                    contact_data['text'])
                 if emails:
-                    filtered = [e for e in emails if not any(x in e.lower() for x in 
-                               ['noreply', 'no-reply', 'donotreply', 'example.com'])]
-                    if filtered:
-                        return filtered[0]
-            except:
+                    valid_emails = [e for e in emails if self._validate_email(e)]
+                    if valid_emails:
+                        return valid_emails[0]
+            except Exception as e:
+                # Skip this link if scraping fails (network error, parsing error, etc.)
+                print(f"  Warning: Could not scrape {link['url']}: {e}")
                 continue
         
         # Method 3: Common email patterns (last resort)
         domain = urlparse(website).netloc
-        common_prefixes = ['contact', 'info', 'hello', 'press', 'media', 'marketing']
-        
-        # We'll mark these as "guessed" and ask for verification
-        guessed_email = f"contact@{domain}"
-        
-        return guessed_email
+        if domain:
+            # Clean domain (remove www. prefix if present)
+            domain = domain.replace('www.', '')
+
+            # Try common prefixes
+            for prefix in ['contact', 'info', 'hello', 'press']:
+                guessed_email = f"{prefix}@{domain}"
+                if self._validate_email(guessed_email):
+                    print(f"  ⚠ Using guessed email (please verify): {guessed_email}")
+                    return guessed_email
+
+        # If no valid email found, return None
+        print(f"  ✗ Could not find valid email for {brand_name}")
+        return None
     
     def _extract_company_info(self, website_data, brand_name):
         """Extract company information and products using AI"""
@@ -316,7 +358,7 @@ Return only valid JSON."""
         
         try:
             message = self.claude.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=1000,
                 messages=[{"role": "user", "content": prompt}]
             )

@@ -1,11 +1,14 @@
 {
     "anthropic_api_key": "YOUR_ANTHROPIC_API_KEY_HERE",
     "brave_api_key": "YOUR_BRAVE_SEARCH_API_KEY_HERE",
-    "sender_email": "pierre.bouyer@icloud.com",
+    "sender_name": "Your Name",
+    "sender_email": "your-email@example.com",
+    "sender_phone": "Your Phone Number",
+    "sender_website": "www.chronos.studio",
     "database_path": "chronos_outreach.db",
-    
+
     "gmail_credentials_path": "gmail_credentials.json",
-    
+
     "smtp": {
         "host": "smtp.gmail.com",
         "port": 587,

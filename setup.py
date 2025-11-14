@@ -45,11 +45,20 @@ def setup_wizard():
     
     config['brave_api_key'] = brave_key if brave_key else ""
     
-    # Sender Email
-    print("\n3. SENDER EMAIL")
-    sender_email = input("   Enter your email address (default: pierre.bouyer@icloud.com): ").strip()
-    config['sender_email'] = sender_email if sender_email else "pierre.bouyer@icloud.com"
-    
+    # Sender Information
+    print("\n3. SENDER INFORMATION")
+    sender_name = input("   Enter your name: ").strip()
+    config['sender_name'] = sender_name if sender_name else "Your Name"
+
+    sender_email = input("   Enter your email address: ").strip()
+    config['sender_email'] = sender_email if sender_email else "your-email@example.com"
+
+    sender_phone = input("   Enter your phone number: ").strip()
+    config['sender_phone'] = sender_phone if sender_phone else "Your Phone Number"
+
+    sender_website = input("   Enter your website (default: www.chronos.studio): ").strip()
+    config['sender_website'] = sender_website if sender_website else "www.chronos.studio"
+
     # Email sending method
     print("\n4. EMAIL SENDING METHOD")
     print("   A) Gmail API (Recommended - more reliable)")
@@ -134,7 +143,7 @@ def test_setup():
         import anthropic
         client = anthropic.Anthropic(api_key=config['anthropic_api_key'])
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=100,
             messages=[{"role": "user", "content": "Hello!"}]
         )

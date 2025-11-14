@@ -6,9 +6,11 @@ Main orchestration module
 
 import os
 import json
+import logging
 import anthropic
 from datetime import datetime
 from pathlib import Path
+from dotenv import load_dotenv
 
 from research_engine import BrandResearcher
 from email_generator import EmailSequenceGenerator
@@ -16,20 +18,69 @@ from database import Database
 from email_sender import EmailSender
 
 
+def setup_logging(log_file='chronos_outreach.log', level=logging.INFO):
+    """
+    Configure logging for the application
+
+    Args:
+        log_file: Path to log file
+        level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    """
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()  # Also output to console
+        ]
+    )
+    return logging.getLogger('chronos')
+
+
 class ChronosOutreachSystem:
     """Main orchestration class for the automated outreach system"""
-    
+
     def __init__(self, config_path="config.json"):
+        self.logger = logging.getLogger('chronos.system')
         self.config = self._load_config(config_path)
         self.db = Database(self.config['database_path'])
         self.researcher = BrandResearcher(self.config)
         self.email_gen = EmailSequenceGenerator(self.config)
         self.email_sender = EmailSender(self.config)
+        self.logger.info("Chronos Outreach System initialized")
         
     def _load_config(self, config_path):
-        """Load configuration from JSON file"""
+        """
+        Load configuration from JSON file and environment variables
+
+        Environment variables take precedence over config.json values.
+        Supported env vars: ANTHROPIC_API_KEY, BRAVE_API_KEY, SENDER_EMAIL,
+        SENDER_NAME, SENDER_PHONE, SENDER_WEBSITE
+        """
+        # Load .env file if it exists
+        load_dotenv()
+
+        # Load base config from JSON
         with open(config_path, 'r') as f:
-            return json.load(f)
+            config = json.load(f)
+
+        # Override with environment variables if present
+        env_mappings = {
+            'ANTHROPIC_API_KEY': 'anthropic_api_key',
+            'BRAVE_API_KEY': 'brave_api_key',
+            'SENDER_EMAIL': 'sender_email',
+            'SENDER_NAME': 'sender_name',
+            'SENDER_PHONE': 'sender_phone',
+            'SENDER_WEBSITE': 'sender_website',
+        }
+
+        for env_var, config_key in env_mappings.items():
+            env_value = os.getenv(env_var)
+            if env_value:
+                config[config_key] = env_value
+                self.logger.debug(f"Loaded {config_key} from environment variable {env_var}")
+
+        return config
     
     def research_category(self, category, limit=20):
         """
@@ -99,8 +150,20 @@ class ChronosOutreachSystem:
         """
         Launch web interface for reviewing and sending emails
         """
-        from web_interface import launch_app
-        launch_app(self)
+        import subprocess
+        import sys
+
+        print("\n🚀 Launching web interface...")
+        print("   Opening browser at http://localhost:8501")
+        print("   Press Ctrl+C to stop the server\n")
+
+        try:
+            subprocess.run([sys.executable, "-m", "streamlit", "run", "web_interface.py"])
+        except KeyboardInterrupt:
+            print("\n✓ Web interface stopped")
+        except Exception as e:
+            print(f"\n❌ Error launching web interface: {e}")
+            print("   Make sure Streamlit is installed: pip install streamlit")
     
     def send_email_batch(self, prospect_ids, email_number=1, delay_seconds=30):
         """
@@ -154,7 +217,10 @@ class ChronosOutreachSystem:
 def main():
     """Main entry point with CLI interface"""
     import argparse
-    
+
+    # Setup logging
+    setup_logging()
+
     parser = argparse.ArgumentParser(description='Chronos Studio Automated Outreach System')
     parser.add_argument('command', choices=['research', 'generate', 'review', 'send', 'stats'],
                        help='Command to execute')

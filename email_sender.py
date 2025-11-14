@@ -5,6 +5,7 @@ Email Sender Module - Send emails via Gmail API
 
 import base64
 import os
+import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from google.oauth2.credentials import Credentials
@@ -21,9 +22,11 @@ class EmailSender:
     SCOPES = ['https://www.googleapis.com/auth/gmail.send']
     
     def __init__(self, config):
+        self.logger = logging.getLogger('chronos.email_sender')
         self.config = config
         self.service = None
-        self.sender_email = config.get('sender_email', 'pierre.bouyer@icloud.com')
+        self.sender_email = config.get('sender_email', 'your-email@example.com')
+        self.logger.info(f"Email Sender initialized with sender: {self.sender_email}")
         self._authenticate()
     
     def _authenticate(self):

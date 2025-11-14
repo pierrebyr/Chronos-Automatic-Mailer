@@ -3,6 +3,7 @@
 Email Sequence Generator - Creates personalized cold email sequences
 """
 
+import logging
 import anthropic
 from datetime import datetime
 
@@ -11,8 +12,10 @@ class EmailSequenceGenerator:
     """Generates personalized email sequences for prospects"""
     
     def __init__(self, config):
+        self.logger = logging.getLogger('chronos.email_generator')
         self.config = config
         self.claude = anthropic.Anthropic(api_key=config['anthropic_api_key'])
+        self.logger.info("Email Sequence Generator initialized")
         
         # Load Chronos brand information
         self.chronos_info = {
@@ -29,10 +32,10 @@ class EmailSequenceGenerator:
             'clients': ['Rémy Martin', 'Suntory Hibiki', 'Via Carota', 'Strange Nature Gin'],
             'sectors': ['Spirits', 'Cosmetics', 'Fashion', 'Luxury goods'],
             'contact': {
-                'name': 'Pierre Bouyer',
-                'email': 'pierre.bouyer@icloud.com',
-                'phone': '+33-6-72-30-92-41',
-                'website': 'www.chronos.studio'
+                'name': config.get('sender_name', 'Your Name'),
+                'email': config.get('sender_email', 'your-email@example.com'),
+                'phone': config.get('sender_phone', 'Your Phone'),
+                'website': config.get('sender_website', 'www.chronos.studio')
             }
         }
     
@@ -149,7 +152,7 @@ CHRONOS STUDIO INFO:
 - Clients: {', '.join(self.chronos_info['clients'])}
 
 TEMPLATE STRUCTURE (adapt and personalize):
-Subject: See [Product Name] Enhanced by Chronos Studio
+Subject: Re: Our Approach to Premium Product Photography + AI
 
 Hi [Name],
 
@@ -192,7 +195,7 @@ PROSPECT INFO:
 - Showcase Product: {showcase_product}
 
 TEMPLATE STRUCTURE (adapt and personalize):
-Subject: See [Product Name] Enhanced by Chronos Studio
+Subject: Final Call: Trial Package for [Company Name]
 
 Hi [Name],
 
@@ -229,7 +232,7 @@ Return ONLY the email in JSON format:
         """Call Claude API to generate email"""
         try:
             message = self.claude.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=2000,
                 messages=[{"role": "user", "content": prompt}]
             )
