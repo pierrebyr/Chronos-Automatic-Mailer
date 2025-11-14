@@ -210,7 +210,7 @@ Return only valid JSON, nothing else."""
         
         try:
             message = self.claude.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-3-5-sonnet-20240620",
                 max_tokens=1000,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -358,7 +358,7 @@ Return only valid JSON."""
         
         try:
             message = self.claude.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-3-5-sonnet-20240620",
                 max_tokens=1000,
                 messages=[{"role": "user", "content": prompt}]
             )

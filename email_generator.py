@@ -232,7 +232,7 @@ Return ONLY the email in JSON format:
         """Call Claude API to generate email"""
         try:
             message = self.claude.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-3-5-sonnet-20240620",
                 max_tokens=2000,
                 messages=[{"role": "user", "content": prompt}]
             )
