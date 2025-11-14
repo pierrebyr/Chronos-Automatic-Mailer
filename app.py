@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 # Import modules
-from main import ChronosSystem, setup_logging
+from main import ChronosOutreachSystem, setup_logging
 from web_styles import get_custom_css
 import logging
 
@@ -32,7 +32,7 @@ def init_session_state():
         try:
             with open('config.json', 'r') as f:
                 config = json.load(f)
-            st.session_state.system = ChronosSystem(config)
+            st.session_state.system = ChronosOutreachSystem()
         except FileNotFoundError:
             st.error("❌ Configuration not found. Please run setup first.")
             st.stop()

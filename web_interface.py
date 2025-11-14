@@ -384,13 +384,13 @@ def show_send_emails(system):
 if __name__ == '__main__':
     # Run with: streamlit run web_interface.py
     import json
-    from main import ChronosSystem
+    from main import ChronosOutreachSystem
 
     # Load config
     try:
         with open('config.json', 'r') as f:
             config = json.load(f)
-        system = ChronosSystem(config)
+        system = ChronosOutreachSystem()
         launch_app(system)
     except FileNotFoundError:
         st.error("❌ config.json not found. Please run setup first: python setup.py")
